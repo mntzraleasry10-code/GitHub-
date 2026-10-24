@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الحاسبة الأولى</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #edf1f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .calculator {
+      width: 300px;
+      padding: 20px;
+      border-radius: 20px;
+      background: #ffffff;
+      box-shadow: 0 8px 25px #0002;
+    }
+
+    h2 {
+      text-align: center;
+      color: #263238;
+    }
+
+    #display {
+      width: 100%;
+      box-sizing: border-box;
+      height: 65px;
+      margin-bottom: 15px;
+      padding: 12px;
+      font-size: 28px;
+      text-align: left;
+      direction: ltr;
+      border: 1px solid #ccd3db;
+      border-radius: 10px;
+      background: #f7f9fb;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #display.error {
+      font-size: 16px;
+      color: #c62828;
+      text-align: right;
+      direction: rtl;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    button {
+      height: 55px;
+      font-size: 21px;
+      border: none;
+      border-radius: 10px;
+      background: #e5eaf0;
+      cursor: pointer;
+    }
+
+    button:active {
+      opacity: 0.7;
+    }
+
+    .operator { background: #d6e8ff; }
+    .clear    { background: #ffd9d9; }
+    .equal    { background: #167d58; color: white; }
+    .equal    { grid-row: span 2; }
+    .zero     { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <h2>حاسبتي</h2>
+
+    <input id="display" value="0" readonly>
+
+    <div class="buttons">
+      <button class="clear" onclick="clearDisplay()">C</button>
+      <button onclick="backspace()">⌫</button>
+      <button class="operator" onclick="chooseOperator('/')">÷</button>
+      <button class="operator" onclick="chooseOperator('*')">×</button>
+
+      <button onclick="appendNumber('7')">7</button>
+      <button onclick="appendNumber('8')">8</button>
+      <button onclick="appendNumber('9')">9</button>
+      <button class="operator" onclick="chooseOperator('-')">−</button>
+
+      <button onclick="appendNumber('4')">4</button>
+      <button onclick="appendNumber('5')">5</button>
+      <button onclick="appendNumber('6')">6</button>
+      <button class="operator" onclick="chooseOperator('+')">+</button>
+
+      <button onclick="appendNumber('1')">1</button>
+      <button onclick="appendNumber('2')">2</button>
+      <button onclick="appendNumber('3')">3</button>
+      <button class="equal" onclick="calculate()">=</button>
+
+      <button class="zero" onclick="appendNumber('0')">0</button>
+      <button onclick="appendNumber('.')">.</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById("display");
+
+    let firstNumber  = null;
+    let operator     = null;
+    let resetDisplay = false;
+    let hasError     = false;
+
+    function formatNumber(n) {
+      if (!isFinite(n)) return "خطأ";
+      return String(Number(n.toPrecision(12)));
+    }
+
+    function setError(msg) {
+      display.value = msg;
+      display.classList.add("error");
+      hasError     = true;
+      operator     = null;
+      firstNumber  = null;
+      resetDisplay = true;
+    }
+
+    function clearErrorStyle() {
+      display.classList.remove("error");
+      hasError = false;
+    }
+
+    function appendNumber(number) {
+      if (hasError) clearDisplay();
+
+      if (resetDisplay) {
+        display.value = number === "." ? "0." : number;
+        resetDisplay = false;
+        return;
+      }
+
+      if (number === "." && display.value.includes(".")) return;
+      if (number === "." && /[eE]/.test(display.value)) return;
+
+      if (display.value === "0" && number !== ".") {
+        display.value = number;
+      } else {
+        display.value += number;
+      }
+    }
+
+    function chooseOperator(op) {
+      if (hasError) { clearDisplay(); return; }
+
+      const current = Number(display.value);
+
+      if (operator !== null && !resetDisplay) {
+        const r = compute(firstNumber, current, operator);
+        if (r === null) return;
+        display.value = formatNumber(r);
+        firstNumber   = r;
+      } else {
+        firstNumber = current;
+      }
+
+      operator     = op;
+      resetDisplay = true;
+    }
+
+    function compute(a, b, op) {
+      switch (op) {
+        case "+": return a + b;
+        case "-": return a - b;
+        case "*": return a * b;
+        case "/":
+          if (b === 0) { setError("لا يمكن القسمة على صفر"); return null; }
+          return a / b;
+      }
+      return null;
+    }
+
+    function calculate() {
+      if (hasError) { clearDisplay(); return; }
+      if (operator === null || firstNumber === null) return;
+
+      const secondNumber = Number(display.value);
+      const result = compute(firstNumber, secondNumber, operator);
+      if (result === null) return;
+
+      display.value = formatNumber(result);
+      operator      = null;
+      firstNumber   = null;
+      resetDisplay  = true;
+    }
+
+    function clearDisplay() {
+      display.value = "0";
+      firstNumber   = null;
+      operator      = null;
+      resetDisplay  = false;
+      clearErrorStyle();
+    }
+
+    function backspace() {
+      if (hasError) { clearDisplay(); return; }
+      if (resetDisplay) return;
+
+      display.value = display.value.length > 1 ?
+        display.value.slice(0, -1) :
+        "0";
+    }
+  </script>
+</body>
+</html>
