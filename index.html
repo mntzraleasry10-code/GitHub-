@@ -112,155 +112,130 @@
   <script>
     const display = document.getElementById("display");
 
-    let firstNumber  = null;
-    let operator     = null;
-    let resetDisplay = false;
-    let hasError     = false;
+    let currentNum = "0";     
+    let prevNum = null;       
+    let op = null;            
+    let startNewNum = true;   
+    let isError = false;      
 
-    function formatNumber(n) {
-      if (!isFinite(n)) return "خطأ";
-      return String(Number(n.toPrecision(12)));
+    function updateDisplay() {
+      if (isError) return;
+
+      if (op !== null && prevNum !== null) {
+        let symbol = op;
+        if (op === "*") symbol = "×";
+        if (op === "/") symbol = "÷";
+        if (op === "-") symbol = "−";
+        
+        let currentPart = startNewNum ? "" : currentNum;
+        display.value = prevNum + " " + symbol + " " + currentPart;
+      } else {
+        display.value = currentNum;
+      }
+    }
+
+    function appendNumber(num) {
+      if (isError) clearDisplay();
+
+      if (startNewNum) {
+        currentNum = num === "." ? "0." : num;
+        startNewNum = false;
+      } else {
+        if (num === "." && currentNum.includes(".")) return;
+        
+        if (currentNum === "0" && num !== ".") {
+          currentNum = num;
+        } else {
+          currentNum += num;
+        }
+      }
+      updateDisplay();
+    }
+
+    function chooseOperator(selectedOp) {
+      if (isError) clearDisplay();
+
+      if (op !== null && prevNum !== null && !startNewNum) {
+        let res = compute(Number(prevNum), Number(currentNum), op);
+        if (res === null) return;
+        currentNum = String(res);
+      }
+      
+      prevNum = currentNum;
+      op = selectedOp;
+      startNewNum = true;
+      updateDisplay();
+    }
+
+    function calculate() {
+      if (isError) return;
+      if (op === null || prevNum === null) return;
+
+      let secondNum = startNewNum ? Number(prevNum) : Number(currentNum);
+      let res = compute(Number(prevNum), secondNum, op);
+      
+      if (res === null) return;
+
+      currentNum = String(res);
+      prevNum = null;
+      op = null;
+      startNewNum = true;
+      updateDisplay();
+    }
+
+    function compute(n1, n2, operation) {
+      let res;
+      switch (operation) {
+        case "+": res = n1 + n2; break;
+        case "-": res = n1 - n2; break;
+        case "*": res = n1 * n2; break;
+        case "/":
+          if (n2 === 0) { setError("لا يمكن القسمة على صفر"); return null; }
+          res = n1 / n2; break;
+        default: return null;
+      }
+      return Number(res.toPrecision(12));
     }
 
     function setError(msg) {
       display.value = msg;
       display.classList.add("error");
-      hasError     = true;
-      operator     = null;
-      firstNumber  = null;
-      resetDisplay = true;
-    }
-
-    function clearErrorStyle() {
-      display.classList.remove("error");
-      hasError = false;
-    }
-
-    function appendNumber(number) {
-      if (hasError) clearDisplay();
-
-      if (resetDisplay) {
-        // إذا كانت الشاشة تعرض عملية (مثل "6 +")، نضيف الرقم الجديد إليها
-        if (/[\+\-\×\÷]\s*$/.test(display.value)) {
-          display.value = display.value.trimEnd() + " " + (number === "." ? "0." : number);
-        } else {
-          // إذا كان الموقع يعرض نتيجة سابقة، نمسحها ونبدأ برقم جديد
-          display.value = number === "." ? "0." : number;
-        }
-        resetDisplay = false;
-        return;
-      }
-
-      // منع كتابة أكثر من نقطة في نفس الرقم
-      if (number === ".") {
-        const parts = display.value.split(/[\+\-\×\÷]/);
-        const currentPart = parts[parts.length - 1].trim();
-        if (currentPart.includes(".")) return;
-      }
-
-      // التعامل مع الصفر
-      if (display.value === "0" && number !== ".") {
-        display.value = number;
-      } else if (display.value.endsWith(" 0") && number !== ".") {
-        display.value = display.value.slice(0, -1) + number;
-      } else {
-        // إذا انتهى العرض بمشغل، نضيف مسافة قبل الرقم
-        if (/[\+\-\×\÷]\s*$/.test(display.value)) {
-          display.value = display.value.trimEnd() + " " + number;
-        } else {
-          display.value += number;
-        }
-      }
-    }
-
-    function chooseOperator(op) {
-      if (hasError) { clearDisplay(); return; }
-
-      // استخراج الرقم الأخير من الشاشة
-      const parts = display.value.split(/[\+\-\×\÷]/);
-      const currentStr = parts[parts.length - 1].trim();
-      const current = currentStr === "" ? 0 : Number(currentStr);
-
-      if (operator !== null && !resetDisplay) {
-        // إذا كان هناك عملية سابقة وتم إدخال رقم جديد، نحسب الناتج المؤقت
-        const r = compute(firstNumber, current, operator);
-        if (r === null) return;
-        firstNumber = r;
-      } else if (operator === null) {
-        // إذا لم تكن هناك عملية سابقة، الرقم الأول هو ما على الشاشة
-        firstNumber = current;
-      }
-
-      operator = op;
-      resetDisplay = true;
-      
-      // تحويل الرمز للعرض
-      let opSymbol = op;
-      if (op === "*") opSymbol = "×";
-      if (op === "/") opSymbol = "÷";
-      if (op === "-") opSymbol = "−";
-      
-      // عرض الرقم الأول والرمز على الشاشة
-      display.value = formatNumber(firstNumber) + " " + opSymbol;
-    }
-
-    function compute(a, b, op) {
-      switch (op) {
-        case "+": return a + b;
-        case "-": return a - b;
-        case "*": return a * b;
-        case "/":
-          if (b === 0) { setError("لا يمكن القسمة على صفر"); return null; }
-          return a / b;
-      }
-      return null;
-    }
-
-    function calculate() {
-      if (hasError) { clearDisplay(); return; }
-      if (operator === null || firstNumber === null) return;
-
-      // استخراج الرقم الثاني من الشاشة
-      const parts = display.value.split(/[\+\-\×\÷]/);
-      const secondStr = parts[parts.length - 1].trim();
-      
-      // إذا ضغط المستخدم "=" بدون إدخال رقم ثانٍ، نستخدم الرقم الأول
-      const secondNumber = secondStr === "" ? firstNumber : Number(secondStr);
-
-      const result = compute(firstNumber, secondNumber, operator);
-      if (result === null) return;
-
-      display.value = formatNumber(result);
-      operator      = null;
-      firstNumber   = null;
-      resetDisplay  = true;
+      isError = true;
+      prevNum = null;
+      op = null;
+      currentNum = "0";
+      startNewNum = true;
     }
 
     function clearDisplay() {
       display.value = "0";
-      firstNumber   = null;
-      operator      = null;
-      resetDisplay  = false;
-      clearErrorStyle();
+      display.classList.remove("error");
+      isError = false;
+      currentNum = "0";
+      prevNum = null;
+      op = null;
+      startNewNum = true;
     }
 
+    // 🔥 هذا هو الجزء اللي تم إصلاحه بالكامل 🔥
     function backspace() {
-      if (hasError) { clearDisplay(); return; }
+      if (isError) { clearDisplay(); return; }
 
-      // لا تسمح بحذف النتيجة النهائية
-      if (resetDisplay && !/[\+\-\×\÷]\s*$/.test(display.value)) return;
-
-      let val = display.value.trimEnd();
-      val = val.length > 1 ? val.slice(0, -1) : "0";
-      display.value = val.trimEnd();
-
-      // إذا تم حذف العملية، نعيد ضبط المتغيرات
-      if (!/[\+\-\×\÷]/.test(display.value)) {
-        operator = null;
-        firstNumber = Number(display.value);
-        if (isNaN(firstNumber)) firstNumber = 0;
-        resetDisplay = false;
+      // إذا كان هناك عملية وضغطت حذف قبل كتابة الرقم الثاني، نلغي العملية ونرجع الرقم الأول
+      if (op !== null && startNewNum) {
+        currentNum = prevNum;
+        prevNum = null;
+        op = null;
+        startNewNum = false;
+      } else {
+        // إذا كنا نكتب رقماً (أو ناتج حساب)، نحذف آخر رقم
+        if (currentNum.length > 1) {
+          currentNum = currentNum.slice(0, -1);
+        } else {
+          currentNum = "0";
+        }
       }
+      updateDisplay();
     }
   </script>
 </body>
