@@ -163,14 +163,21 @@
       if (operator !== null && !resetDisplay) {
         const r = compute(firstNumber, current, operator);
         if (r === null) return;
-        display.value = formatNumber(r);
-        firstNumber   = r;
+        firstNumber = r;
       } else {
         firstNumber = current;
       }
 
-      operator     = op;
+      operator = op;
       resetDisplay = true;
+      
+      // إضافة جديدة: إظهار العملية الحسابية على الشاشة
+      let opSymbol = op;
+      if (op === "*") opSymbol = "×";
+      if (op === "/") opSymbol = "÷";
+      if (op === "-") opSymbol = "−";
+      
+      display.value = formatNumber(firstNumber) + " " + opSymbol;
     }
 
     function compute(a, b, op) {
@@ -189,7 +196,13 @@
       if (hasError) { clearDisplay(); return; }
       if (operator === null || firstNumber === null) return;
 
-      const secondNumber = Number(display.value);
+      let secondNumber = Number(display.value);
+      
+      // إضافة جديدة: إذا ضغط المستخدم "=" والشاشة تعرض العملية، نعتبر الرقم الثاني هو الأول
+      if (isNaN(secondNumber)) {
+        secondNumber = firstNumber;
+      }
+
       const result = compute(firstNumber, secondNumber, operator);
       if (result === null) return;
 
