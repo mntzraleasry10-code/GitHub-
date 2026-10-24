@@ -140,43 +140,67 @@
       if (hasError) clearDisplay();
 
       if (resetDisplay) {
-        display.value = number === "." ? "0." : number;
+        // إذا كانت الشاشة تعرض عملية (مثل "6 +")، نضيف الرقم الجديد إليها
+        if (/[\+\-\×\÷]\s*$/.test(display.value)) {
+          display.value = display.value.trimEnd() + " " + (number === "." ? "0." : number);
+        } else {
+          // إذا كان الموقع يعرض نتيجة سابقة، نمسحها ونبدأ برقم جديد
+          display.value = number === "." ? "0." : number;
+        }
         resetDisplay = false;
         return;
       }
 
-      if (number === "." && display.value.includes(".")) return;
-      if (number === "." && /[eE]/.test(display.value)) return;
+      // منع كتابة أكثر من نقطة في نفس الرقم
+      if (number === ".") {
+        const parts = display.value.split(/[\+\-\×\÷]/);
+        const currentPart = parts[parts.length - 1].trim();
+        if (currentPart.includes(".")) return;
+      }
 
+      // التعامل مع الصفر
       if (display.value === "0" && number !== ".") {
         display.value = number;
+      } else if (display.value.endsWith(" 0") && number !== ".") {
+        display.value = display.value.slice(0, -1) + number;
       } else {
-        display.value += number;
+        // إذا انتهى العرض بمشغل، نضيف مسافة قبل الرقم
+        if (/[\+\-\×\÷]\s*$/.test(display.value)) {
+          display.value = display.value.trimEnd() + " " + number;
+        } else {
+          display.value += number;
+        }
       }
     }
 
     function chooseOperator(op) {
       if (hasError) { clearDisplay(); return; }
 
-      const current = Number(display.value);
+      // استخراج الرقم الأخير من الشاشة
+      const parts = display.value.split(/[\+\-\×\÷]/);
+      const currentStr = parts[parts.length - 1].trim();
+      const current = currentStr === "" ? 0 : Number(currentStr);
 
       if (operator !== null && !resetDisplay) {
+        // إذا كان هناك عملية سابقة وتم إدخال رقم جديد، نحسب الناتج المؤقت
         const r = compute(firstNumber, current, operator);
         if (r === null) return;
         firstNumber = r;
-      } else {
+      } else if (operator === null) {
+        // إذا لم تكن هناك عملية سابقة، الرقم الأول هو ما على الشاشة
         firstNumber = current;
       }
 
       operator = op;
       resetDisplay = true;
       
-      // إضافة جديدة: إظهار العملية الحسابية على الشاشة
+      // تحويل الرمز للعرض
       let opSymbol = op;
       if (op === "*") opSymbol = "×";
       if (op === "/") opSymbol = "÷";
       if (op === "-") opSymbol = "−";
       
+      // عرض الرقم الأول والرمز على الشاشة
       display.value = formatNumber(firstNumber) + " " + opSymbol;
     }
 
@@ -196,12 +220,12 @@
       if (hasError) { clearDisplay(); return; }
       if (operator === null || firstNumber === null) return;
 
-      let secondNumber = Number(display.value);
+      // استخراج الرقم الثاني من الشاشة
+      const parts = display.value.split(/[\+\-\×\÷]/);
+      const secondStr = parts[parts.length - 1].trim();
       
-      // إضافة جديدة: إذا ضغط المستخدم "=" والشاشة تعرض العملية، نعتبر الرقم الثاني هو الأول
-      if (isNaN(secondNumber)) {
-        secondNumber = firstNumber;
-      }
+      // إذا ضغط المستخدم "=" بدون إدخال رقم ثانٍ، نستخدم الرقم الأول
+      const secondNumber = secondStr === "" ? firstNumber : Number(secondStr);
 
       const result = compute(firstNumber, secondNumber, operator);
       if (result === null) return;
@@ -222,11 +246,21 @@
 
     function backspace() {
       if (hasError) { clearDisplay(); return; }
-      if (resetDisplay) return;
 
-      display.value = display.value.length > 1 ?
-        display.value.slice(0, -1) :
-        "0";
+      // لا تسمح بحذف النتيجة النهائية
+      if (resetDisplay && !/[\+\-\×\÷]\s*$/.test(display.value)) return;
+
+      let val = display.value.trimEnd();
+      val = val.length > 1 ? val.slice(0, -1) : "0";
+      display.value = val.trimEnd();
+
+      // إذا تم حذف العملية، نعيد ضبط المتغيرات
+      if (!/[\+\-\×\÷]/.test(display.value)) {
+        operator = null;
+        firstNumber = Number(display.value);
+        if (isNaN(firstNumber)) firstNumber = 0;
+        resetDisplay = false;
+      }
     }
   </script>
 </body>
